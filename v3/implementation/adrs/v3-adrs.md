@@ -22,8 +22,9 @@
 | ADR-009 | Hybrid Memory Backend as Default | **Implemented** ✅ | 2026-01-03 |
 | ADR-010 | Remove Deno Support | **Implemented** ✅ | 2026-01-03 |
 | ADR-011 | LLM Provider System | **Implemented** ✅ | 2026-01-05 |
-| ADR-012 | MCP Security Features | In Progress | 2026-01-05 |
+| ADR-012 | MCP Security Features | **Implemented** ✅ | 2026-01-05 |
 | ADR-013 | Core Security Module | **Implemented** ✅ | 2026-01-05 |
+| ADR-014 | Cross-Platform Workers System | **Implemented** ✅ | 2026-01-05 |
 
 ---
 

@@ -1,9 +1,10 @@
 # ADR-020: Headless Worker Integration Architecture
 
-**Status:** Proposed
+**Status:** Implemented
 **Date:** 2026-01-07
+**Updated:** 2026-01-08
 **Author:** System Architecture Designer
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Extends:** ADR-019 (Headless Runtime Package)
 
 ## Context

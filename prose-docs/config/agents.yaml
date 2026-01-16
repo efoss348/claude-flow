@@ -1,0 +1,849 @@
+# =============================================================================
+# Prose-Docs Agent Definitions
+# =============================================================================
+# Claude Flow multi-agent configuration for AI-powered document generation.
+# Version: 1.0.0
+#
+# This file defines the 7 specialized agents that collaborate to generate,
+# edit, and manage personalized documents.
+# =============================================================================
+
+version: "1.0.0"
+name: "prose-docs-agents"
+description: "Agent definitions for document generation pipeline"
+
+# =============================================================================
+# Global Agent Settings
+# =============================================================================
+settings:
+  # Coordination topology
+  topology: hierarchical
+  max_concurrent_agents: 8
+  strategy: specialized
+
+  # Communication settings
+  message_queue: memory
+  timeout_ms: 30000
+  retry_attempts: 3
+
+  # Learning integration
+  learning_enabled: true
+  auto_learn_from_edits: true
+  min_confidence_threshold: 0.8
+
+  # Memory settings
+  memory_backend: hybrid
+  memory_namespace: prose-docs
+  persist_state: true
+
+# =============================================================================
+# Agent Definitions
+# =============================================================================
+agents:
+  # ---------------------------------------------------------------------------
+  # Data Ingestion Agent
+  # ---------------------------------------------------------------------------
+  # Responsible for parsing and validating customer data from various sources.
+  # First agent in the pipeline - ensures clean data for downstream processing.
+  # ---------------------------------------------------------------------------
+  data_ingestion:
+    type: specialized
+    role: "Parse and validate customer data from any source"
+    description: |
+      Handles all data ingestion operations including:
+      - CSV/Excel file parsing
+      - Google Sheets API integration
+      - JSON/XML data parsing
+      - API endpoint data fetching
+      - Data validation and normalization
+      - Missing field detection and handling
+
+    tools:
+      - parsers          # CSV, JSON, XML, Excel parsers
+      - validators       # Data validation utilities
+      - api_client       # HTTP client for API sources
+      - sheets_client    # Google Sheets integration
+      - data_normalizer  # Field normalization
+
+    capabilities:
+      - parse_csv
+      - parse_json
+      - parse_excel
+      - fetch_api_data
+      - validate_schema
+      - normalize_fields
+      - detect_missing_data
+      - map_field_names
+
+    input_types:
+      - csv
+      - json
+      - xlsx
+      - google_sheets
+      - api_endpoint
+
+    output_schema:
+      type: object
+      properties:
+        customer_data:
+          type: object
+          description: "Normalized customer data"
+        validation_report:
+          type: object
+          description: "Validation results and warnings"
+        field_mapping:
+          type: object
+          description: "Original to normalized field mapping"
+
+    error_handling:
+      missing_required_field: prompt_user
+      invalid_format: attempt_recovery
+      api_failure: retry_with_backoff
+
+    metrics:
+      - records_processed
+      - validation_errors
+      - fields_normalized
+
+  # ---------------------------------------------------------------------------
+  # Document Builder Agent
+  # ---------------------------------------------------------------------------
+  # Core document generation agent. Takes validated data and fills templates.
+  # ---------------------------------------------------------------------------
+  document_builder:
+    type: specialized
+    role: "Fill templates with customer data"
+    description: |
+      Primary document generation agent responsible for:
+      - Loading document templates
+      - Parsing template placeholders
+      - Substituting customer data into templates
+      - Handling conditional content blocks
+      - Managing repeating sections
+      - Preserving template formatting
+
+    tools:
+      - document_engine     # Core document manipulation
+      - template_processor  # Template parsing and filling
+      - placeholder_parser  # {{variable}} extraction
+      - conditional_engine  # If/else block handling
+      - loop_processor      # Repeating section handling
+
+    capabilities:
+      - load_template
+      - parse_placeholders
+      - substitute_values
+      - process_conditionals
+      - handle_loops
+      - preserve_formatting
+      - generate_toc
+      - insert_images
+
+    supported_formats:
+      - docx
+      - md
+      - html
+      - txt
+
+    placeholder_syntax:
+      simple: "{{variable_name}}"
+      conditional: "{{#if condition}}...{{/if}}"
+      loop: "{{#each items}}...{{/each}}"
+      default: "{{variable_name|default:'fallback'}}"
+      format: "{{date|format:'YYYY-MM-DD'}}"
+
+    output_schema:
+      type: object
+      properties:
+        document:
+          type: binary
+          description: "Generated document content"
+        placeholders_filled:
+          type: array
+          description: "List of filled placeholders"
+        unfilled_placeholders:
+          type: array
+          description: "Any placeholders that could not be filled"
+
+    error_handling:
+      missing_placeholder_value: use_default_or_blank
+      invalid_template: report_error
+      format_mismatch: attempt_conversion
+
+    metrics:
+      - documents_generated
+      - placeholders_filled
+      - templates_used
+
+  # ---------------------------------------------------------------------------
+  # Formatting Editor Agent
+  # ---------------------------------------------------------------------------
+  # Handles post-generation formatting corrections and consistency.
+  # ---------------------------------------------------------------------------
+  formatting_editor:
+    type: specialized
+    role: "Fix formatting issues post-modification"
+    description: |
+      Ensures consistent formatting throughout documents:
+      - Fixes broken formatting after edits
+      - Maintains style consistency
+      - Corrects spacing and alignment
+      - Normalizes fonts and sizes
+      - Fixes list numbering
+      - Ensures heading hierarchy
+
+    tools:
+      - formatting_utils  # Text formatting utilities
+      - python_docx       # DOCX manipulation
+      - style_normalizer  # Style consistency
+      - spacing_fixer     # Spacing correction
+      - list_renumberer   # List/numbering fixes
+
+    capabilities:
+      - fix_broken_formatting
+      - normalize_styles
+      - correct_spacing
+      - fix_list_numbering
+      - ensure_heading_hierarchy
+      - standardize_fonts
+      - fix_table_formatting
+      - correct_indentation
+
+    formatting_rules:
+      heading_hierarchy: strict
+      font_consistency: enforce
+      spacing_rules:
+        paragraph_after: 12pt
+        line_spacing: 1.15
+      list_style: consistent
+
+    output_schema:
+      type: object
+      properties:
+        document:
+          type: binary
+          description: "Formatted document"
+        changes_made:
+          type: array
+          description: "List of formatting changes applied"
+        formatting_score:
+          type: number
+          description: "Quality score 0-100"
+
+    error_handling:
+      conflicting_styles: use_document_default
+      missing_style: create_from_template
+
+    metrics:
+      - formatting_fixes_applied
+      - style_inconsistencies_found
+      - formatting_score_average
+
+  # ---------------------------------------------------------------------------
+  # Legal Proofer Agent
+  # ---------------------------------------------------------------------------
+  # Specialized agent for legal document accuracy and compliance.
+  # ---------------------------------------------------------------------------
+  legal_proofer:
+    type: specialized
+    role: "Check legal accuracy and completeness"
+    description: |
+      Ensures legal document accuracy and compliance:
+      - Verifies required clauses are present
+      - Checks legal terminology usage
+      - Validates date and amount references
+      - Ensures party names consistency
+      - Checks for missing signatures
+      - Validates jurisdiction references
+
+    tools:
+      - knowledge_base    # Legal knowledge database
+      - legal_rules       # Legal rule engine
+      - clause_checker    # Required clause validation
+      - term_validator    # Legal terminology checker
+      - reference_checker # Cross-reference validation
+
+    capabilities:
+      - check_required_clauses
+      - validate_legal_terms
+      - verify_party_consistency
+      - check_date_references
+      - validate_amounts
+      - verify_signatures
+      - check_jurisdiction
+      - flag_ambiguities
+
+    legal_checks:
+      required_clauses:
+        - parties_identification
+        - effective_date
+        - governing_law
+        - signatures
+      terminology_standards:
+        - shall_vs_will
+        - herein_references
+        - party_references
+      date_validation:
+        - future_dates_allowed
+        - date_format_consistency
+
+    output_schema:
+      type: object
+      properties:
+        document:
+          type: binary
+          description: "Proofed document"
+        legal_issues:
+          type: array
+          description: "Found legal issues"
+        compliance_score:
+          type: number
+          description: "Legal compliance score 0-100"
+        recommendations:
+          type: array
+          description: "Suggested improvements"
+
+    severity_levels:
+      critical: "Must fix before finalization"
+      warning: "Should review"
+      info: "Style suggestion"
+
+    error_handling:
+      missing_required_clause: flag_critical
+      ambiguous_term: flag_warning
+
+    metrics:
+      - documents_proofed
+      - issues_found
+      - critical_issues_blocked
+
+  # ---------------------------------------------------------------------------
+  # Visual Formatter Agent
+  # ---------------------------------------------------------------------------
+  # Final aesthetic and layout pass before export.
+  # ---------------------------------------------------------------------------
+  visual_formatter:
+    type: specialized
+    role: "Final aesthetic and layout pass"
+    description: |
+      Handles final visual presentation:
+      - Page layout optimization
+      - Header/footer formatting
+      - Page break management
+      - Margin adjustments
+      - Visual consistency check
+      - PDF rendering preparation
+
+    tools:
+      - formatting_utils  # Layout utilities
+      - pdf_export        # PDF generation
+      - page_layout       # Page management
+      - header_footer     # Header/footer handling
+      - image_optimizer   # Image handling
+
+    capabilities:
+      - optimize_page_layout
+      - format_headers_footers
+      - manage_page_breaks
+      - adjust_margins
+      - finalize_images
+      - prepare_pdf_export
+      - add_watermarks
+      - insert_page_numbers
+
+    layout_settings:
+      page_size: letter
+      margins:
+        top: 1in
+        bottom: 1in
+        left: 1in
+        right: 1in
+      header_distance: 0.5in
+      footer_distance: 0.5in
+
+    visual_checks:
+      - orphan_lines
+      - widow_lines
+      - table_splits
+      - image_overflow
+      - margin_violations
+
+    output_schema:
+      type: object
+      properties:
+        document:
+          type: binary
+          description: "Visually formatted document"
+        layout_report:
+          type: object
+          description: "Layout analysis results"
+        export_ready:
+          type: boolean
+          description: "Ready for final export"
+
+    export_formats:
+      - pdf
+      - docx
+      - print
+
+    metrics:
+      - documents_formatted
+      - layout_issues_fixed
+      - export_preparations
+
+  # ---------------------------------------------------------------------------
+  # Learning Coordinator Agent
+  # ---------------------------------------------------------------------------
+  # Manages the feedback loop and knowledge base updates.
+  # ---------------------------------------------------------------------------
+  learning_coordinator:
+    type: coordinator
+    role: "Manage feedback loops and knowledge base"
+    description: |
+      Central learning and coordination agent:
+      - Captures human edit patterns
+      - Extracts learnable rules
+      - Updates knowledge base
+      - Distributes learned patterns
+      - Manages rule confidence scores
+      - Coordinates agent improvements
+
+    tools:
+      - learning_system   # ML pattern extraction
+      - database          # Knowledge storage
+      - rule_engine       # Rule management
+      - pattern_matcher   # Edit pattern analysis
+      - feedback_analyzer # Human feedback processing
+
+    capabilities:
+      - capture_edit_patterns
+      - extract_rules
+      - update_knowledge_base
+      - calculate_confidence
+      - distribute_learnings
+      - manage_rule_lifecycle
+      - analyze_feedback
+      - coordinate_agents
+
+    learning_modes:
+      passive: "Observe without intervention"
+      active: "Apply learned rules automatically"
+      supervised: "Suggest rules for human approval"
+
+    rule_management:
+      min_confidence: 0.8
+      decay_factor: 0.95
+      reinforcement_boost: 1.1
+      max_rules_per_category: 100
+
+    knowledge_categories:
+      - formatting_rules
+      - legal_patterns
+      - terminology_preferences
+      - layout_standards
+      - error_corrections
+
+    output_schema:
+      type: object
+      properties:
+        rules_learned:
+          type: array
+          description: "Newly learned rules"
+        rules_updated:
+          type: array
+          description: "Updated existing rules"
+        rules_deprecated:
+          type: array
+          description: "Deprecated low-confidence rules"
+        knowledge_stats:
+          type: object
+          description: "Knowledge base statistics"
+
+    metrics:
+      - rules_learned
+      - rules_applied
+      - learning_accuracy
+      - knowledge_base_size
+
+  # ---------------------------------------------------------------------------
+  # Human Interface Agent
+  # ---------------------------------------------------------------------------
+  # Handles all user interactions and natural language processing.
+  # ---------------------------------------------------------------------------
+  human_interface:
+    type: interface
+    role: "Handle user interactions and edit requests"
+    description: |
+      User-facing interaction agent:
+      - Parses natural language commands
+      - Interprets edit instructions
+      - Generates user-friendly responses
+      - Manages interactive sessions
+      - Handles clarification dialogs
+      - Provides progress updates
+
+    tools:
+      - cli                      # Command line interface
+      - natural_language_parser  # NLP for edit instructions
+      - dialog_manager           # Conversation handling
+      - progress_reporter        # Status updates
+      - error_explainer          # User-friendly errors
+
+    capabilities:
+      - parse_nl_commands
+      - interpret_edit_requests
+      - generate_responses
+      - manage_dialogs
+      - request_clarification
+      - report_progress
+      - explain_errors
+      - suggest_actions
+
+    supported_commands:
+      edit_commands:
+        - "change X to Y"
+        - "remove the X clause"
+        - "add X after Y"
+        - "make X more formal"
+        - "fix the formatting in X"
+      query_commands:
+        - "show me X"
+        - "what is the status of X"
+        - "list all X"
+      action_commands:
+        - "generate document for X"
+        - "export X as PDF"
+        - "review document X"
+
+    response_styles:
+      success: "Clear confirmation with next steps"
+      error: "Explanation with suggested fix"
+      progress: "Percentage and current step"
+      question: "Clear options for user choice"
+
+    output_schema:
+      type: object
+      properties:
+        response:
+          type: string
+          description: "User-facing response"
+        parsed_intent:
+          type: object
+          description: "Parsed user intent"
+        actions_taken:
+          type: array
+          description: "Actions performed"
+        suggestions:
+          type: array
+          description: "Suggested next actions"
+
+    metrics:
+      - commands_processed
+      - clarifications_needed
+      - user_satisfaction_score
+
+# =============================================================================
+# Workflow Definitions
+# =============================================================================
+# Define how agents collaborate for different operations.
+# =============================================================================
+workflows:
+  # ---------------------------------------------------------------------------
+  # Document Generation Workflow
+  # ---------------------------------------------------------------------------
+  document_generation:
+    name: "Generate Document"
+    description: "Full document generation pipeline"
+    trigger: "generate command"
+
+    steps:
+      - step: 1
+        agent: data_ingestion
+        action: validate_customer_data
+        input:
+          - customer_id
+        output: validated_data
+        on_failure: abort
+
+      - step: 2
+        agent: document_builder
+        action: fill_template
+        input:
+          - template_id
+          - validated_data
+        output: draft_document
+        on_failure: abort
+
+      - step: 3
+        agent: formatting_editor
+        action: fix_formatting
+        input:
+          - draft_document
+        output: formatted_document
+        on_failure: continue_with_warning
+
+      - step: 4
+        agent: legal_proofer
+        action: check_legal_accuracy
+        input:
+          - formatted_document
+        output: proofed_document
+        on_failure: flag_for_review
+
+      - step: 5
+        agent: visual_formatter
+        action: finalize_layout
+        input:
+          - proofed_document
+        output: final_document
+        on_failure: continue_with_warning
+
+      - step: 6
+        agent: learning_coordinator
+        action: log_generation
+        input:
+          - final_document
+          - workflow_metrics
+        output: logged
+        on_failure: continue
+
+  # ---------------------------------------------------------------------------
+  # Edit Document Workflow
+  # ---------------------------------------------------------------------------
+  edit_document:
+    name: "Edit Document"
+    description: "Apply natural language edit to document"
+    trigger: "edit command"
+
+    steps:
+      - step: 1
+        agent: human_interface
+        action: parse_edit_instruction
+        input:
+          - edit_instruction
+        output: parsed_edit
+        on_failure: request_clarification
+
+      - step: 2
+        agent: document_builder
+        action: apply_edit
+        input:
+          - document_id
+          - parsed_edit
+        output: edited_document
+        on_failure: abort
+
+      - step: 3
+        agent: formatting_editor
+        action: fix_formatting
+        input:
+          - edited_document
+        output: formatted_document
+        on_failure: continue_with_warning
+
+      - step: 4
+        agent: legal_proofer
+        action: verify_edit_validity
+        input:
+          - formatted_document
+          - parsed_edit
+        output: verified_document
+        on_failure: flag_for_review
+
+      - step: 5
+        agent: learning_coordinator
+        action: capture_edit_pattern
+        input:
+          - edit_instruction
+          - parsed_edit
+          - verified_document
+        output: pattern_captured
+        on_failure: continue
+
+  # ---------------------------------------------------------------------------
+  # Batch Processing Workflow
+  # ---------------------------------------------------------------------------
+  batch_processing:
+    name: "Batch Generate"
+    description: "Generate documents for multiple customers"
+    trigger: "batch command"
+
+    parallel_execution: true
+    max_parallel: 4
+
+    steps:
+      - step: 1
+        agent: data_ingestion
+        action: validate_batch_data
+        input:
+          - customer_file
+        output: validated_customers
+        on_failure: partial_continue
+
+      - step: 2
+        agent: document_builder
+        action: batch_fill_templates
+        input:
+          - template_id
+          - validated_customers
+        output: draft_documents
+        parallel: true
+        on_failure: log_and_continue
+
+      - step: 3
+        agent: formatting_editor
+        action: batch_fix_formatting
+        input:
+          - draft_documents
+        output: formatted_documents
+        parallel: true
+        on_failure: continue_with_warning
+
+      - step: 4
+        agent: legal_proofer
+        action: batch_check_legal
+        input:
+          - formatted_documents
+        output: proofed_documents
+        parallel: true
+        on_failure: flag_failures
+
+      - step: 5
+        agent: visual_formatter
+        action: batch_finalize
+        input:
+          - proofed_documents
+        output: final_documents
+        parallel: true
+        on_failure: continue_with_warning
+
+      - step: 6
+        agent: learning_coordinator
+        action: log_batch_metrics
+        input:
+          - final_documents
+          - batch_metrics
+        output: logged
+        on_failure: continue
+
+  # ---------------------------------------------------------------------------
+  # Review and Export Workflow
+  # ---------------------------------------------------------------------------
+  review_export:
+    name: "Review and Export"
+    description: "Human review and final export"
+    trigger: "export command"
+
+    steps:
+      - step: 1
+        agent: human_interface
+        action: check_review_status
+        input:
+          - document_id
+        output: review_status
+        on_failure: abort
+
+      - step: 2
+        agent: visual_formatter
+        action: prepare_export
+        input:
+          - document_id
+          - export_format
+        output: export_ready_document
+        on_failure: abort
+        condition: "review_status.approved == true"
+
+      - step: 3
+        agent: learning_coordinator
+        action: log_export
+        input:
+          - export_ready_document
+          - export_metadata
+        output: logged
+        on_failure: continue
+
+# =============================================================================
+# Inter-Agent Communication
+# =============================================================================
+communication:
+  # Message passing configuration
+  message_format: json
+  max_message_size: 10mb
+
+  # Agent channels
+  channels:
+    data_channel:
+      publishers:
+        - data_ingestion
+      subscribers:
+        - document_builder
+        - learning_coordinator
+
+    document_channel:
+      publishers:
+        - document_builder
+        - formatting_editor
+        - legal_proofer
+        - visual_formatter
+      subscribers:
+        - formatting_editor
+        - legal_proofer
+        - visual_formatter
+        - learning_coordinator
+
+    learning_channel:
+      publishers:
+        - learning_coordinator
+      subscribers:
+        - document_builder
+        - formatting_editor
+        - legal_proofer
+        - human_interface
+
+    user_channel:
+      publishers:
+        - human_interface
+      subscribers:
+        - all
+
+# =============================================================================
+# Error Handling
+# =============================================================================
+error_handling:
+  global_timeout: 60000
+  retry_policy:
+    max_retries: 3
+    backoff_multiplier: 2
+    initial_delay_ms: 1000
+
+  escalation:
+    critical_errors:
+      - legal_compliance_failure
+      - data_corruption
+    notify:
+      - human_interface
+      - learning_coordinator
+
+  recovery:
+    checkpoint_interval: 5
+    auto_save: true
+    rollback_on_failure: true
+
+# =============================================================================
+# Metrics and Monitoring
+# =============================================================================
+monitoring:
+  enabled: true
+  metrics_interval: 60
+
+  tracked_metrics:
+    - agent_response_time
+    - workflow_completion_rate
+    - error_rate
+    - learning_effectiveness
+    - document_quality_score
+
+  alerting:
+    error_rate_threshold: 0.1
+    response_time_threshold: 30000
+    quality_score_threshold: 80

@@ -128,12 +128,19 @@ class Template(Base):
     name = Column(String(255), nullable=False, unique=True)
     version = Column(String(50), nullable=False, default="1.0.0")
     content = Column(LargeBinary, nullable=False)  # Binary Word doc content
-    placeholders = Column(JSON, nullable=False, default=list)  # List of bracket tags
+    placeholders = Column(JSON, nullable=False, default=list)  # List of bracket tags with full definitions
     category = Column(SQLEnum(TemplateCategory), nullable=False, default=TemplateCategory.OTHER)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Smart bracket detection fields (auto-detected on first load)
+    bracket_style = Column(String(50), nullable=True)  # e.g., "square", "curly", "double_curly"
+    bracket_pattern = Column(String(255), nullable=True)  # Regex pattern for this template
+    field_definitions = Column(JSON, nullable=True, default=dict)  # Full field definitions with types
+    analyzed_at = Column(DateTime, nullable=True)  # When template was last analyzed
+    analysis_confidence = Column(Float, nullable=True)  # Confidence score of detection
 
     # Relationships
     documents = relationship("GeneratedDocument", back_populates="template", cascade="all, delete-orphan")
